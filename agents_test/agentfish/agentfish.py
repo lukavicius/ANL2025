@@ -1,22 +1,30 @@
 import logging
-from random import randint
+from random import randint,uniform
 from time import time
 from typing import cast
 
 from geniusweb.actions.Accept import Accept
 from geniusweb.actions.Action import Action
+from geniusweb.actions.LearningDone import LearningDone
 from geniusweb.actions.Offer import Offer
 from geniusweb.actions.PartyId import PartyId
+from geniusweb.actions.Vote import Vote
+from geniusweb.actions.Votes import Votes
 from geniusweb.bidspace.AllBidsList import AllBidsList
 from geniusweb.inform.ActionDone import ActionDone
 from geniusweb.inform.Finished import Finished
 from geniusweb.inform.Inform import Inform
+from geniusweb.inform.OptIn import OptIn
 from geniusweb.inform.Settings import Settings
+from geniusweb.inform.Voting import Voting
 from geniusweb.inform.YourTurn import YourTurn
 from geniusweb.issuevalue.Bid import Bid
 from geniusweb.issuevalue.Domain import Domain
+from geniusweb.issuevalue.Value import Value
+from geniusweb.issuevalue.ValueSet import ValueSet
 from geniusweb.party.Capabilities import Capabilities
 from geniusweb.party.DefaultParty import DefaultParty
+from geniusweb.profile.utilityspace.UtilitySpace import UtilitySpace
 from geniusweb.profile.utilityspace.LinearAdditiveUtilitySpace import (
     LinearAdditiveUtilitySpace,
 )
@@ -29,8 +37,19 @@ from tudelft_utilities_logging.ReportToLogger import ReportToLogger
 
 from .utils.opponent_model import OpponentModel
 
+from geniusweb.progress.ProgressRounds import ProgressRounds
+from geniusweb.utils import val
+from geniusweb.profileconnection.ProfileInterface import ProfileInterface
+from geniusweb.profile.utilityspace.LinearAdditive import LinearAdditive
+from geniusweb.progress.Progress import Progress
+from tudelft.utilities.immutablelist.ImmutableList import ImmutableList
+from decimal import Decimal
+import sys
+from .extended_util_space import ExtendedUtilSpace
+from tudelft_utilities_logging.Reporter import Reporter
 
-class TemplateAgent(DefaultParty):
+
+class AgentFish(DefaultParty):
     """
     Template of a Python geniusweb agent.
     """
@@ -51,6 +70,13 @@ class TemplateAgent(DefaultParty):
         self.last_received_bid: Bid = None
         self.opponent_model: OpponentModel = None
         self.logger.log(logging.INFO, "party is initialized")
+
+        self.profileint: ProfileInterface = None  # type:ignore
+        self.utilspace: LinearAdditive = None  # type:ignore
+        self.extendedspace: ExtendedUtilSpace = None  # type:ignore
+        self.e: float = 1.2
+        self.lastvotes: Votes = None  # type:ignore
+        self.opponent_max = 0.0
 
     def notifyChange(self, data: Inform):
         """MUST BE IMPLEMENTED
@@ -108,6 +134,10 @@ class TemplateAgent(DefaultParty):
         else:
             self.logger.log(logging.WARNING, "Ignoring unknown info " + str(data))
 
+    def getE(self) -> float:
+
+        return self.e
+
     def getCapabilities(self) -> Capabilities:
         """MUST BE IMPLEMENTED
         Method to indicate to the protocol what the capabilities of this agent are.
@@ -137,7 +167,7 @@ class TemplateAgent(DefaultParty):
         Returns:
             str: Agent description
         """
-        return "Template agent for the ANL 2022 competition"
+        return "Foot in the Door agent for the ANL 2022 competition"
 
     def opponent_action(self, action):
         """Process an action that was received from the opponent.
@@ -158,21 +188,74 @@ class TemplateAgent(DefaultParty):
             # set bid as last received
             self.last_received_bid = bid
 
+            if self.opponent_max < self.profile.getUtility(bid):
+                self.opponent_max = self.profile.getUtility(bid)
+
     def my_turn(self):
         """This method is called when it is our turn. It should decide upon an action
         to perform and send this action to the opponent.
         """
         # check if the last received offer is good enough
+        self.updateUtilSpace()
         if self.accept_condition(self.last_received_bid):
             # if so, accept the offer
             action = Accept(self.me, self.last_received_bid)
         else:
             # if not, find a bid to propose as counter offer
-            bid = self.find_bid()
+            bid = self.makeBid()
             action = Offer(self.me, bid)
 
         # send the action
         self.send_action(action)
+
+    def updateUtilSpace(self) -> LinearAdditive:  # throws IOException
+        newutilspace = self.profile
+        if not newutilspace == self.utilspace:
+            self.utilspace = cast(LinearAdditive, newutilspace)
+            self.extendedspace = ExtendedUtilSpace(self.utilspace)
+        return self.utilspace
+
+    def makeBid(self) -> Bid:
+        """
+        @return next possible bid with current target utility, or null if no such
+                bid.
+        """
+        time_to_deadline = self.progress.get(time() * 1000)
+
+        utilityGoal = self.getUtilityGoal(
+            time_to_deadline,
+            self.getE(),
+            self.extendedspace.getMin(),
+            self.extendedspace.getMax(),
+        )
+        options: ImmutableList[Bid] = self.extendedspace.getBids(utilityGoal)
+        if options.size() == 0:
+            # if we can't find good bid, get max util bid....
+            options = self.extendedspace.getBids(self.extendedspace.getMax())
+        # pick a random one.
+        return options.get(randint(0, options.size() - 1))
+
+    def getUtilityGoal(
+        self, t: float, e: float, minUtil: Decimal, maxUtil: Decimal
+    ) -> Decimal:
+        """
+        @param t       the time in [0,1] where 0 means start of nego and 1 the
+                       end of nego (absolute time/round limit)
+        @param e       the e value that determinses how fast the party makes
+                       concessions with time. Typically around 1. 0 means no
+                       concession, 1 linear concession, &gt;1 faster than linear
+                       concession.
+        @param minUtil the minimum utility possible in our profile
+        @param maxUtil the maximum utility possible in our profile
+        @return the utility goal for this time and e value
+        """
+
+        ft1 = Decimal(1)
+        if e != 0:
+            ft1 = round(Decimal(1 - pow(t, 1 / e)), 6)  # defaults ROUND_HALF_UP
+            myoffer =  max(min((maxUtil - (maxUtil - minUtil) * ft1), maxUtil), minUtil)
+            return max(myoffer, self.opponent_max)
+
 
     def save_data(self):
         """This method is called after the negotiation is finished. It can be used to store data
@@ -196,28 +279,16 @@ class TemplateAgent(DefaultParty):
 
         # very basic approach that accepts if the offer is valued above 0.7 and
         # 95% of the time towards the deadline has passed
+        maxAccept = 0.8
+        minAccept = 0.6
+        ft = round(Decimal(1 - progress), 6)  # defaults ROUND_HALF_UP
+        acceptline =  max(min((minAccept + (maxAccept - minAccept) * float(ft)), maxAccept), minAccept)
         conditions = [
-            self.profile.getUtility(bid) > 0.8,
+            float(self.profile.getUtility(bid)) > acceptline,
+            progress > uniform(0.8, 0.95),
             progress > 0.95,
         ]
-        return all(conditions)
-
-    def find_bid(self) -> Bid:
-        # compose a list of all possible bids
-        domain = self.profile.getDomain()
-        all_bids = AllBidsList(domain)
-
-        best_bid_score = 0.0
-        best_bid = None
-
-        # take 500 attempts to find a bid according to a heuristic score
-        for _ in range(500):
-            bid = all_bids.get(randint(0, all_bids.size() - 1))
-            bid_score = self.score_bid(bid)
-            if bid_score > best_bid_score:
-                best_bid_score, best_bid = bid_score, bid
-
-        return best_bid
+        return all([any(conditions), progress > 0.1])
 
     def score_bid(self, bid: Bid, alpha: float = 0.95, eps: float = 0.1) -> float:
         """Calculate heuristic score for a bid
