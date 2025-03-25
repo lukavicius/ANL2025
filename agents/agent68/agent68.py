@@ -201,23 +201,36 @@ class Agent68(DefaultParty):
             progress > 0.95,
         ]
         return all(conditions)
-
+    
     def find_bid(self) -> Bid:
-        # compose a list of all possible bids
         domain = self.profile.getDomain()
         all_bids = AllBidsList(domain)
+        
+        candidate_bids = []
+        pareto_bids = []
 
-        best_bid_score = 0.0
-        best_bid = None
-
-        # take 500 attempts to find a bid according to a heuristic score
         for _ in range(500):
             bid = all_bids.get(randint(0, all_bids.size() - 1))
-            bid_score = self.score_bid(bid)
-            if bid_score > best_bid_score:
-                best_bid_score, best_bid = bid_score, bid
+            our_utility = self.profile.getUtility(bid)
+            opponent_utility = self.opponent_model.get_predicted_utility(bid) if self.opponent_model is not None else 0  
 
-        return best_bid
+            candidate_bids.append((bid, our_utility, opponent_utility))
+
+        # Filter Pareto-efficient bids
+        for bid, our_utility, opponent_utility in candidate_bids:
+            if not any(
+                (other_our_utility >= our_utility and other_opponent_utility > opponent_utility) or
+                (other_our_utility > our_utility and other_opponent_utility >= opponent_utility)
+                for _, other_our_utility, other_opponent_utility in candidate_bids
+            ):
+                pareto_bids.append((bid, our_utility, opponent_utility))
+
+        # Choose the best Pareto-efficient bid
+        if pareto_bids:
+            return max(pareto_bids, key=lambda x: self.score_bid(x[0]))[0]
+        
+        return candidate_bids[0][0] 
+
 
     def score_bid(self, bid: Bid, alpha: float = 0.95, eps: float = 0.1) -> float:
         """Calculate heuristic score for a bid
