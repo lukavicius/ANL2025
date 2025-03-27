@@ -5,11 +5,14 @@ import time
 
 from utils.runners import run_tournament
 
-RESULTS_DIR = Path("baseline_results", time.strftime('%Y%m%d-%H%M%S'))
+RESULTS_DIR = Path("final_results", time.strftime('%Y%m%d-%H%M%S'))
 
 # create results directory if it does not exist
 if not RESULTS_DIR.exists():
     RESULTS_DIR.mkdir(parents=True)
+
+numbers = [f"{i:02}" for i in range(50)]
+random_selection = random.sample(numbers, 2)
 
 # Settings to run a negotiation session:
 #   You need to specify the classpath of 2 agents to start a negotiation. Parameters for the agent can be added as a dict (see example)
@@ -83,9 +86,9 @@ tournament_settings = {
             "parameters": {"storage_dir": "agents_test/storage_dir/TimeDependentAgent"},
         },
         {
-            "name" : "ComprisingAgent",
-            "class": "agents_test.comprising_agent.comprising_agent.ComprisingAgent",
-            "parameters": {"storage_dir": "agents_test/storage_dir/ComprisingAgent"},
+            "name" : "CompromisingAgent",
+            "class": "agents_test.compromising_agent.compromising_agent.CompromisingAgent",
+            "parameters": {"storage_dir": "agents_test/storage_dir/CompromisingAgent"},
         },
         {
             "name" : "LearningAgent",
@@ -93,14 +96,14 @@ tournament_settings = {
             "parameters": {"storage_dir": "agents_test/storage_dir/LearningAgent"},
         },
         {
-            "name" : "FishAgent",
-            "class": "agents_test.fish_agent.fish_agent.FishAgent",
-            "parameters": {"storage_dir": "agents_test/storage_dir/FishAgent"},
+            "name" : "agentfish",
+            "class": "agents_test.agentfish.agentfish.AgentFish",
+            "parameters": {"storage_dir": "agents_test/storage_dir/AgentFish"},
         },
         {
-            "name" : "Agent2",
-            "class": "agents_test.agent2.agent2.Agent2",
-            "parameters": {"storage_dir": "agents_test/storage_dir/Agent2"},
+            "name" : "Agent3",
+            "class": "agents_test.agent3.agent3.Agent3",
+            "parameters": {"storage_dir": "agents_test/storage_dir/Agent3"},
         },
         {
             "name" : "Agent32",
@@ -119,8 +122,8 @@ tournament_settings = {
         }
     ],
     "profile_sets": [
-        ["domains/domain00/profileA.json", "domains/domain00/profileB.json"],
-        ["domains/domain01/profileA.json", "domains/domain01/profileB.json"],
+        ["domains/domain" + random_selection[0] + "/profileA.json", "domains/domain" + random_selection[0] + "/profileB.json"],
+        ["domains/domain" + random_selection[1] + "/profileA.json", "domains/domain" + random_selection[1] + "/profileB.json"],
     ],
     "deadline_time_ms": 10000,
 }

@@ -3,6 +3,7 @@ import csv
 import glob
 import json
 import os
+import random
 import shutil
 import time
 from pathlib import Path
@@ -36,12 +37,12 @@ agents = [
         "parameters": {"storage_dir": "agents_test/storage_dir/Agent007"},
     },
     {
-        "name" : "Agent22",
+        "name" : "Agent24",
         "class": "agents_test.agent24.agent24.Agent24",
         "parameters": {"storage_dir": "agents_test/storage_dir/Agent24"},
     },
     {
-        "name" : "Agent68old",
+        "name" : "Agent55",
         "class": "agents_test.agent55.agent55.Agent55",
         "parameters": {"storage_dir": "agents_test/storage_dir/Agent55"},
     },
@@ -82,32 +83,65 @@ agents = [
     }
 ]
 
+numbers = [f"{i:02}" for i in range(50)]
+random_selection = random.sample(numbers, 2)
+
 overall_results = []
 for i in range(len(agents)):
-    settings = {
-        "agents": [
-            our_agent,
-            agents[i],
-        ],
-        "profiles": ["domains/domain00/profileA.json", "domains/domain00/profileB.json"],
-        "deadline_time_ms": 10000,
-    }
+    for j in range(len(random_selection)):
+        settings = {
+            "agents": [
+                our_agent,
+                agents[i],
+            ],
+            "profiles": ["domains/domain" + random_selection[j] + "/profileA.json", "domains/domain" + random_selection[j] + "/profileB.json"],
+            "deadline_time_ms": 10000,
+        }
 
-    session_results_trace, session_results_summary = run_session(settings)
-    last_round_results = {
-        "agent_1": session_results_summary["agent_" + str(i * 2 + 1)],
-        "agent_2": session_results_summary["agent_" + str(i * 2 + 2)],
-        "utility_1": session_results_summary["utility_" + str(i * 2 + 1)],
-        "utility_2": session_results_summary["utility_" + str(i * 2 + 2)],
-        "nash_product": session_results_summary["nash_product"],
-        "social_welfare": session_results_summary["social_welfare"],
-        "agreement": session_results_summary["result"],
-    }
-    overall_results.append(last_round_results)
+        session_results_trace, session_results_summary = run_session(settings)
+        last_round_results = {
+            "agent_1": session_results_summary["agent_" + str(i * 4 + j * 2 + 1)],
+            "agent_2": session_results_summary["agent_" + str(i * 4 + j * 2 + 2)],
+            "utility_1": session_results_summary["utility_" + str(i * 4 + j * 2 + 1)],
+            "utility_2": session_results_summary["utility_" + str(i * 4 + j * 2 + 2)],
+            "nash_product": session_results_summary["nash_product"],
+            "social_welfare": session_results_summary["social_welfare"],
+            "agreement": session_results_summary["result"],
+        }
+        overall_results.append(last_round_results)
+
+aggregated_results = defaultdict(lambda: {
+    "utility_1": 0, "utility_2": 0, "nash_product": 0,
+    "social_welfare": 0, "agreement_count": 0, "count": 0
+})
+
+# Aggregate values
+for result in overall_results:
+    key = (result["agent_1"], result["agent_2"])
+    aggregated_results[key]["utility_1"] += result["utility_1"]
+    aggregated_results[key]["utility_2"] += result["utility_2"]
+    aggregated_results[key]["nash_product"] += result["nash_product"]
+    aggregated_results[key]["social_welfare"] += result["social_welfare"]
+    aggregated_results[key]["agreement_count"] += 1 if result["agreement"] == "agreement" else 0  # Convert to int for counting
+    aggregated_results[key]["count"] += 1
+
+# Compute averages and format final results
+final_results = []
+for (agent_1, agent_2), values in aggregated_results.items():
+    count = values["count"]
+    final_results.append({
+        "agent_1": agent_1,
+        "agent_2": agent_2,
+        "utility_1": values["utility_1"] / count,
+        "utility_2": values["utility_2"] / count,
+        "nash_product": values["nash_product"] / count,
+        "social_welfare": values["social_welfare"] / count,
+        "agreement_count": values["agreement_count"],  # Total agreements
+    })
 
 # write results to file
 
-df = pd.DataFrame(overall_results)
+df = pd.DataFrame(final_results)
 
 average_row = df.mean(numeric_only=True).to_dict()
 average_row["agent_1"] = "Average"

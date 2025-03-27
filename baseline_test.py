@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import random
 import time
 
 from utils.runners import run_tournament
@@ -10,6 +11,9 @@ RESULTS_DIR = Path("baseline_results", time.strftime('%Y%m%d-%H%M%S'))
 # create results directory if it does not exist
 if not RESULTS_DIR.exists():
     RESULTS_DIR.mkdir(parents=True)
+
+numbers = [f"{i:02}" for i in range(50)]
+random_selection = random.sample(numbers, 2)
 
 # Settings to run a negotiation session:
 #   You need to specify the classpath of 2 agents to start a negotiation. Parameters for the agent can be added as a dict (see example)
@@ -22,55 +26,50 @@ tournament_settings = {
         "class": "agents_test.agent007.agent007.Agent007",
         "parameters": {"storage_dir": "agents_test/storage_dir/Agent007"},
     },
-    {
-        "name" : "Agent22",
-        "class": "agents_test.agent24.agent24.Agent24",
-        "parameters": {"storage_dir": "agents_test/storage_dir/Agent24"},
-    },
-    {
-        "name" : "Agent55",
-        "class": "agents_test.agent55.agent55.Agent55",
-        "parameters": {"storage_dir": "agents_test/storage_dir/Agent55"},
-    },
-    {
-        "name" : "BoulwareAgent",
-        "class": "agents_test.boulware_agent.boulware_agent.BoulwareAgent",
-        "parameters": {"storage_dir": "agents_test/storage_dir/BoulwareAgent"},
-    },
-    {
-        "name" : "ConcederAgent",
-        "class": "agents_test.conceder_agent.conceder_agent.ConcederAgent",
-        "parameters": {"storage_dir": "agents_test/storage_dir/ConcederAgent"},
-    },
+    # {
+    #     "name" : "Agent55",
+    #     "class": "agents_test.agent55.agent55.Agent55",
+    #     "parameters": {"storage_dir": "agents_test/storage_dir/Agent55"},
+    # },
+    # {
+    #     "name" : "BoulwareAgent",
+    #     "class": "agents_test.boulware_agent.boulware_agent.BoulwareAgent",
+    #     "parameters": {"storage_dir": "agents_test/storage_dir/BoulwareAgent"},
+    # },
+    # {
+    #     "name" : "ConcederAgent",
+    #     "class": "agents_test.conceder_agent.conceder_agent.ConcederAgent",
+    #     "parameters": {"storage_dir": "agents_test/storage_dir/ConcederAgent"},
+    # },
     {
         "name" : "DreamTeam109Agent",
         "class": "agents_test.dreamteam109_agent.dreamteam109_agent.DreamTeam109Agent",
         "parameters": {"storage_dir": "agents_test/storage_dir/DreamTeam109Agent"},
     },
-    {
-        "name" : "LinearAgent",
-        "class": "agents_test.linear_agent.linear_agent.LinearAgent",
-        "parameters": {"storage_dir": "agents_test/storage_dir/LinearAgent"},
-    },
-    {
-        "name" : "RandomAgent",
-        "class": "agents_test.random_agent.random_agent.RandomAgent",
-        "parameters": {"storage_dir": "agents_test/storage_dir/RandomAgent"},
-    },
-    {
-        "name" : "StupidAgent",
-        "class": "agents_test.stupid_agent.stupid_agent.StupidAgent",
-        "parameters": {"storage_dir": "agents_test/storage_dir/StupidAgent"},
-    },
-    {
-        "name" : "ChargingBoul",
-        "class": "agents_test.charging_boul.charging_boul.ChargingBoul",
-        "parameters": {"storage_dir": "agents_test/storage_dir/ChargingBoul"},
-    }
+    # {
+    #     "name" : "LinearAgent",
+    #     "class": "agents_test.linear_agent.linear_agent.LinearAgent",
+    #     "parameters": {"storage_dir": "agents_test/storage_dir/LinearAgent"},
+    # },
+    # {
+    #     "name" : "RandomAgent",
+    #     "class": "agents_test.random_agent.random_agent.RandomAgent",
+    #     "parameters": {"storage_dir": "agents_test/storage_dir/RandomAgent"},
+    # },
+    # {
+    #     "name" : "StupidAgent",
+    #     "class": "agents_test.stupid_agent.stupid_agent.StupidAgent",
+    #     "parameters": {"storage_dir": "agents_test/storage_dir/StupidAgent"},
+    # },
+    # {
+    #     "name" : "ChargingBoul",
+    #     "class": "agents_test.charging_boul.charging_boul.ChargingBoul",
+    #     "parameters": {"storage_dir": "agents_test/storage_dir/ChargingBoul"},
+    # }
     ],
     "profile_sets": [
-        ["domains/domain00/profileA.json", "domains/domain00/profileB.json"],
-        ["domains/domain01/profileA.json", "domains/domain01/profileB.json"],
+        ["domains/domain" + random_selection[0] + "/profileA.json", "domains/domain" + random_selection[0] + "/profileB.json"],
+        ["domains/domain" + random_selection[1] + "/profileA.json", "domains/domain" + random_selection[1] + "/profileB.json"],
     ],
     "deadline_time_ms": 10000,
 }
