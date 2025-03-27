@@ -47,6 +47,7 @@ class Agent68(DefaultParty):
         self.other: str = None
         self.settings: Settings = None
         self.storage_dir: str = None
+        self.current_bid: Bid = None
 
         self.last_received_bid: Bid = None
         self.opponent_model: OpponentModel = None
@@ -162,14 +163,14 @@ class Agent68(DefaultParty):
         """This method is called when it is our turn. It should decide upon an action
         to perform and send this action to the opponent.
         """
+        self.current_bid = self.find_bid()
         # check if the last received offer is good enough
         if self.accept_condition(self.last_received_bid):
             # if so, accept the offer
             action = Accept(self.me, self.last_received_bid)
         else:
             # if not, find a bid to propose as counter offer
-            bid = self.find_bid()
-            action = Offer(self.me, bid)
+            action = Offer(self.me, self.current_bid)
 
         # send the action
         self.send_action(action)
@@ -193,14 +194,21 @@ class Agent68(DefaultParty):
 
         # progress of the negotiation session between 0 and 1 (1 is deadline)
         progress = self.progress.get(time() * 1000)
+        reservation_bid = self.profile.getReservationBid()
+        reservation_value = self.profile.getUtility(
+            reservation_bid) if reservation_bid is not None else 0.4
 
         # very basic approach that accepts if the offer is valued above 0.7 and
         # 95% of the time towards the deadline has passed
         conditions = [
-            self.profile.getUtility(bid) > 0.8,
-            progress > 0.95,
+            progress < 0.5 and self.profile.getUtility(self.current_bid) < self.profile.getUtility(bid),
+            progress < 0.5 and self.profile.getUtility(bid) > 0.8,
+            progress < 0.995 and self.profile.getUtility(self.current_bid) < self.profile.getUtility(bid),
+            progress < 0.995 and self.score_bid(bid) > 1.3,
+            progress < 0.995 and self.profile.getUtility(bid) > 0.7, 
+            progress > 0.995 and self.profile.getUtility(bid) > reservation_value,
         ]
-        return all(conditions)
+        return any(conditions)
     
     def find_bid(self) -> Bid:
         domain = self.profile.getDomain()

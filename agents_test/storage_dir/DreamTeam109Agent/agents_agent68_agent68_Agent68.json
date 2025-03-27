@@ -39,6 +39,38 @@
             "progressAtFinish": 0.9590896728515625,
             "topBidsPercentage": 0.0033333333333333335,
             "utilityAtFinish": 0.9696269791
+        },
+        {
+            "didAccept": true,
+            "forceAcceptAtRemainingTurns": 0,
+            "isGood": true,
+            "progressAtFinish": 0.951909619140625,
+            "topBidsPercentage": 0.0033333333333333335,
+            "utilityAtFinish": 0.9837
+        },
+        {
+            "didAccept": true,
+            "forceAcceptAtRemainingTurns": 0,
+            "isGood": true,
+            "progressAtFinish": 0.8091537109375,
+            "topBidsPercentage": 0.0033333333333333335,
+            "utilityAtFinish": 0.9988662832
+        },
+        {
+            "didAccept": true,
+            "forceAcceptAtRemainingTurns": 0,
+            "isGood": true,
+            "progressAtFinish": 0.9158619140625,
+            "topBidsPercentage": 0.0033333333333333335,
+            "utilityAtFinish": 0.9969699314
+        },
+        {
+            "didAccept": true,
+            "forceAcceptAtRemainingTurns": 0,
+            "isGood": true,
+            "progressAtFinish": 0.9286119873046875,
+            "topBidsPercentage": 0.0033333333333333335,
+            "utilityAtFinish": 0.9363462253
         }
     ]
 }
