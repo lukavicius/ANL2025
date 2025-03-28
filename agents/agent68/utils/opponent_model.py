@@ -1,3 +1,4 @@
+import math
 from collections import defaultdict
 
 from geniusweb.issuevalue.Bid import Bid
@@ -8,51 +9,39 @@ from geniusweb.issuevalue.Value import Value
 
 class OpponentModel:
     def __init__(self, domain: Domain):
-        self.offers = []
         self.domain = domain
+        self.offers = []
 
         self.issue_estimators = {
-            i: IssueEstimator(v) for i, v in domain.getIssuesValues().items()
+            issue: IssueEstimator(valueset)
+            for issue, valueset in domain.getIssuesValues().items()
         }
 
     def update(self, bid: Bid):
-        # keep track of all bids received
         self.offers.append(bid)
 
-        # update all issue estimators with the value that is offered for that issue
-        for issue_id, issue_estimator in self.issue_estimators.items():
-            issue_estimator.update(bid.getValue(issue_id))
+        decay_lambda = 0.15
+        time_weight = math.exp(-decay_lambda * (len(self.offers) - 1))
+
+        for issue_id, estimator in self.issue_estimators.items():
+            value = bid.getValue(issue_id)
+            estimator.update(value, time_weight)
 
     def get_predicted_utility(self, bid: Bid):
-        if len(self.offers) == 0 or bid is None:
-            return 0
+        if not self.offers or bid is None:
+            return 0.0
 
-        # initiate
-        total_issue_weight = 0.0
-        value_utilities = []
-        issue_weights = []
+        total_weight = sum(est.weight for est in self.issue_estimators.values())
+        if total_weight == 0:
+            total_weight = len(self.issue_estimators)
 
-        for issue_id, issue_estimator in self.issue_estimators.items():
-            # get the value that is set for this issue in the bid
-            value: Value = bid.getValue(issue_id)
+        predicted_utility = 0.0
 
-            # collect both the predicted weight for the issue and
-            # predicted utility of the value within this issue
-            value_utilities.append(issue_estimator.get_value_utility(value))
-            issue_weights.append(issue_estimator.weight)
-
-            total_issue_weight += issue_estimator.weight
-
-        # normalise the issue weights such that the sum is 1.0
-        if total_issue_weight == 0.0:
-            issue_weights = [1 / len(issue_weights) for _ in issue_weights]
-        else:
-            issue_weights = [iw / total_issue_weight for iw in issue_weights]
-
-        # calculate predicted utility by multiplying all value utilities with their issue weight
-        predicted_utility = sum(
-            [iw * vu for iw, vu in zip(issue_weights, value_utilities)]
-        )
+        for issue_id, estimator in self.issue_estimators.items():
+            value = bid.getValue(issue_id)
+            issue_weight = estimator.weight / total_weight
+            value_utility = estimator.get_value_utility(value)
+            predicted_utility += issue_weight * value_utility
 
         return predicted_utility
 
@@ -60,62 +49,43 @@ class OpponentModel:
 class IssueEstimator:
     def __init__(self, value_set: DiscreteValueSet):
         if not isinstance(value_set, DiscreteValueSet):
-            raise TypeError(
-                "This issue estimator only supports issues with discrete values"
-            )
+            raise TypeError("This issue estimator only supports discrete value sets")
 
-        self.bids_received = 0
-        self.max_value_count = 0
-        self.num_values = value_set.size()
-        self.value_trackers = defaultdict(ValueEstimator)
-        self.weight = 0
+        self.bids_received = 0  # number of times this issue has been updated
+        self.value_trackers = defaultdict(ValueEstimator)  # one estimator per value
+        self.num_values = value_set.size()  # total number of possible values
+        self.weight = 0.0  # estimated importance of this issue (0 to 1)
 
-    def update(self, value: Value):
+    def update(self, value: Value, time_weight: float):
         self.bids_received += 1
 
-        # get the value tracker of the value that is offered
-        value_tracker = self.value_trackers[value]
+        self.value_trackers[value].update(time_weight)
 
-        # register that this value was offered
-        value_tracker.update()
+        total_weighted = sum(vt.weighted_count for vt in self.value_trackers.values())
 
-        # update the count of the most common offered value
-        self.max_value_count = max([value_tracker.count, self.max_value_count])
+        for vt in self.value_trackers.values():
+            vt.recalculate_utility(total_weighted)
 
-        # update predicted issue weight
-        # the intuition here is that if the values of the receiverd offers spread out over all
-        # possible values, then this issue is likely not important to the opponent (weight == 0.0).
-        # If all received offers proposed the same value for this issue,
-        # then the predicted issue weight == 1.0
-        equal_shares = self.bids_received / self.num_values
-        self.weight = (self.max_value_count - equal_shares) / (
-            self.bids_received - equal_shares
-        )
-
-        # recalculate all value utilities
-        for value_tracker in self.value_trackers.values():
-            value_tracker.recalculate_utility(self.max_value_count, self.weight)
+        if total_weighted > 0:
+            max_count = max(vt.weighted_count for vt in self.value_trackers.values())
+            self.weight = max_count / total_weighted  # consistency → importance
+        else:
+            self.weight = 0.0
 
     def get_value_utility(self, value: Value):
-        if value in self.value_trackers:
-            return self.value_trackers[value].utility
-
-        return 0
+        return self.value_trackers[value].utility if value in self.value_trackers else 0.0
 
 
 class ValueEstimator:
     def __init__(self):
-        self.count = 0
-        self.utility = 0
+        self.weighted_count = 0.0
+        self.utility = 0.0
 
-    def update(self):
-        self.count += 1
+    def update(self, time_weight: float):
+        self.weighted_count += time_weight
 
-    def recalculate_utility(self, max_value_count: int, weight: float):
-        if weight < 1:
-            mod_value_count = ((self.count + 1) ** (1 - weight)) - 1
-            mod_max_value_count = ((max_value_count + 1) ** (1 - weight)) - 1
-
-            self.utility = mod_value_count / mod_max_value_count
+    def recalculate_utility(self, total_weighted_bids: float):
+        if total_weighted_bids > 0:
+            self.utility = self.weighted_count / total_weighted_bids
         else:
-            self.utility = 1
+            self.utility = 0.0
