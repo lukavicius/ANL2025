@@ -37,6 +37,7 @@ class Agent68(DefaultParty):
 
     def __init__(self):
         super().__init__()
+        self.pareto_bids = []
         self.logger: ReportToLogger = self.getReporter()
 
         self.domain: Domain = None
@@ -81,6 +82,7 @@ class Agent68(DefaultParty):
             self.profile = profile_connection.getProfile()
             self.domain = self.profile.getDomain()
             profile_connection.close()
+            self.determine_good_utility()
 
         # ActionDone informs you of an action (an offer or an accept)
         # that is performed by one of the agents (including yourself).
@@ -188,56 +190,73 @@ class Agent68(DefaultParty):
     ################################## Example methods below ##################################
     ###########################################################################################
 
+    def determine_good_utility(self):
+        """Takes 500 random bids and determines the average utility of the top 10%."""
+        domain = self.profile.getDomain()
+        all_bids = AllBidsList(domain)
+
+        utilities = []
+        for _ in range(500):
+            bid = all_bids.get(randint(0, all_bids.size() - 1))
+            utilities.append(float(self.profile.getUtility(bid))) 
+
+        utilities.sort(reverse=True)
+        top_10_percent = utilities[:50] 
+        self.good_utility_threshold = sum(top_10_percent) / len(top_10_percent) 
+
     def accept_condition(self, bid: Bid) -> bool:
         if bid is None:
             return False
 
-        # progress of the negotiation session between 0 and 1 (1 is deadline)
         progress = self.progress.get(time() * 1000)
         reservation_bid = self.profile.getReservationBid()
-        reservation_value = self.profile.getUtility(
-            reservation_bid) if reservation_bid is not None else 0.4
+        reservation_value = float(self.profile.getUtility(reservation_bid)) if reservation_bid is not None else 0.4
 
-        # very basic approach that accepts if the offer is valued above 0.7 and
-        # 95% of the time towards the deadline has passed
+        bid_utility = float(self.profile.getUtility(bid))  
+        current_bid_utility = float(self.profile.getUtility(self.current_bid))  
+
         conditions = [
-            progress < 0.5 and self.profile.getUtility(self.current_bid) < self.profile.getUtility(bid),
-            progress < 0.5 and self.profile.getUtility(bid) > 0.8,
-            progress < 0.995 and self.profile.getUtility(self.current_bid) < self.profile.getUtility(bid),
+            progress < 0.5 and current_bid_utility < bid_utility,
+            progress < 0.5 and bid_utility > self.good_utility_threshold,
+            progress < 0.995 and current_bid_utility < bid_utility,
             progress < 0.995 and self.score_bid(bid) > 1.3,
-            progress < 0.995 and self.profile.getUtility(bid) > 0.7, 
-            progress > 0.995 and self.profile.getUtility(bid) > reservation_value,
+            progress < 0.995 and bid_utility > self.good_utility_threshold * 0.8,
+            progress > 0.995 and bid_utility > reservation_value,
         ]
         return any(conditions)
+
     
     def find_bid(self) -> Bid:
         domain = self.profile.getDomain()
         all_bids = AllBidsList(domain)
-        
+
         candidate_bids = []
-        pareto_bids = []
+        new_pareto_bids = []
 
         for _ in range(500):
             bid = all_bids.get(randint(0, all_bids.size() - 1))
             our_utility = self.profile.getUtility(bid)
-            opponent_utility = self.opponent_model.get_predicted_utility(bid) if self.opponent_model is not None else 0  
-
+            opponent_utility = self.opponent_model.get_predicted_utility(bid) if self.opponent_model is not None else 0
             candidate_bids.append((bid, our_utility, opponent_utility))
 
+        all_candidates = self.pareto_bids + candidate_bids
+
         # Filter Pareto-efficient bids
-        for bid, our_utility, opponent_utility in candidate_bids:
+        for bid, our_utility, opponent_utility in all_candidates:
             if not any(
                 (other_our_utility >= our_utility and other_opponent_utility > opponent_utility) or
                 (other_our_utility > our_utility and other_opponent_utility >= opponent_utility)
-                for _, other_our_utility, other_opponent_utility in candidate_bids
+                for _, other_our_utility, other_opponent_utility in all_candidates
             ):
-                pareto_bids.append((bid, our_utility, opponent_utility))
+                new_pareto_bids.append((bid, our_utility, opponent_utility))
+
+        self.pareto_bids = new_pareto_bids
 
         # Choose the best Pareto-efficient bid
-        if pareto_bids:
-            return max(pareto_bids, key=lambda x: self.score_bid(x[0]))[0]
-        
-        return candidate_bids[0][0] 
+        if self.pareto_bids:
+            return max(self.pareto_bids, key=lambda x: self.score_bid(x[0]))[0]
+
+        return candidate_bids[0][0]
 
 
     def score_bid(self, bid: Bid, alpha: float = 0.95, eps: float = 0.1) -> float:
