@@ -201,8 +201,8 @@ class Agent68(DefaultParty):
             utilities.append(float(self.profile.getUtility(bid))) 
 
         utilities.sort(reverse=True)
-        top_10_percent = utilities[:50]
-        self.good_utility_threshold = sum(top_10_percent) / len(top_10_percent) 
+        top_10_percent = utilities[:75]
+        self.good_utility_threshold = top_10_percent[-1]
 
     def accept_condition(self, bid: Bid) -> bool:
         if bid is None:
