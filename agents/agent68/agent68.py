@@ -201,26 +201,34 @@ class Agent68(DefaultParty):
             utilities.append(float(self.profile.getUtility(bid))) 
 
         utilities.sort(reverse=True)
-        top_10_percent = utilities[:50] 
+        top_10_percent = utilities[:50]
         self.good_utility_threshold = sum(top_10_percent) / len(top_10_percent) 
 
     def accept_condition(self, bid: Bid) -> bool:
         if bid is None:
             return False
 
+        ## get progress
         progress = self.progress.get(time() * 1000)
+
+        ## get reservation value, if none, then 0.4
         reservation_bid = self.profile.getReservationBid()
         reservation_value = float(self.profile.getUtility(reservation_bid)) if reservation_bid is not None else 0.4
 
+        ## get utilities
         bid_utility = float(self.profile.getUtility(bid))  
         current_bid_utility = float(self.profile.getUtility(self.current_bid))  
 
         conditions = [
+            ## first period: accept next or accept if better than the calculated 90th percentile
             progress < 0.5 and current_bid_utility < bid_utility,
             progress < 0.5 and bid_utility > self.good_utility_threshold,
+            ## second period: accept next, accept if social welfare is more than 0.8 * 90th percentile * 2,
+            ## or accept if self utility is more than 0.8 * 90th percentile
             progress < 0.995 and current_bid_utility < bid_utility,
-            progress < 0.995 and self.score_bid(bid) > 1.3,
+            progress < 0.995 and self.score_bid(bid) > self.good_utility_threshold * 0.8 * 2,
             progress < 0.995 and bid_utility > self.good_utility_threshold * 0.8,
+            ##  third period: accept if bid utility is more than the reservation value (last second deal)
             progress > 0.995 and bid_utility > reservation_value,
         ]
         return any(conditions)
@@ -272,13 +280,20 @@ class Agent68(DefaultParty):
         Returns:
             float: score
         """
+        ## get progress
         progress = self.progress.get(time() * 1000)
 
+        ## get utility
         our_utility = float(self.profile.getUtility(bid))
 
+        ## calculate the time pressure 
         time_pressure = 1.0 - progress ** (1 / eps)
+
+        ## calculate the self bid score depending on the time pressure
         score = alpha * time_pressure * our_utility
 
+        ## if there is opponent modelling, calculate the score including the time 
+        ## pressure and add it to the score
         if self.opponent_model is not None:
             opponent_utility = self.opponent_model.get_predicted_utility(bid)
             opponent_score = (1.0 - alpha * time_pressure) * opponent_utility
