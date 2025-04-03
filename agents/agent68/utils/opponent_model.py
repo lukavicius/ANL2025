@@ -20,7 +20,7 @@ class OpponentModel:
     def update(self, bid: Bid):
         self.offers.append(bid)
 
-        decay_lambda = 0.15
+        decay_lambda = 0.2
         time_weight = math.exp(-decay_lambda * (len(self.offers) - 1))
 
         for issue_id, estimator in self.issue_estimators.items():
