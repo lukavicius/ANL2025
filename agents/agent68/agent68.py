@@ -191,20 +191,24 @@ class Agent68(DefaultParty):
     ###########################################################################################
 
     def determine_good_utility(self):
-        """Determines the 10% quantile utility by selecting the utility of the 75th highest bid out of 500 random bids."""
+        """Determines the quantile utility by selecting the utility of the 75th highest bid out of 500 random bids."""
         
         domain = self.profile.getDomain()
         all_bids = AllBidsList(domain)
 
         utilities = []
-        # Take random 500 bids
-        for _ in range(500):
+        # Take random 10% of all bids
+        all_bids_size = int(all_bids.size() * 0.1)
+        for _ in range(all_bids_size):
             bid = all_bids.get(randint(0, all_bids.size() - 1))
             utilities.append(float(self.profile.getUtility(bid))) 
         
         utilities.sort(reverse=True)
-        top_10_percent = utilities[:75] # 75th biggest utility represents 10% quantile
+
+        top_5 = int(all_bids_size*0.02)
+        top_10_percent = utilities[:top_5] 
         self.good_utility_threshold = top_10_percent[-1]
+
 
     def accept_condition(self, bid: Bid) -> bool:
         if bid is None:
@@ -242,35 +246,28 @@ class Agent68(DefaultParty):
 
         # Initialize lists to store candidate bids and new Pareto-efficient bids
         candidate_bids = []
-        new_pareto_bids = []
-
-        # Generate 500 random bids and evaluate their utility for both the agent and the opponent
-        for _ in range(500):
+        pareto_bids = []
+        # Generate 10% of the total bids random bids and evaluate their utility for both the agent and the opponent
+        for _ in range(int(all_bids.size() * 0.1)):  
             bid = all_bids.get(randint(0, all_bids.size() - 1))
             our_utility = self.profile.getUtility(bid)
             opponent_utility = self.opponent_model.get_predicted_utility(bid) if self.opponent_model is not None else 0
             candidate_bids.append((bid, our_utility, opponent_utility))
 
-        # Combine the current Pareto frontier with the newly generated candidate bids
-        all_candidates = self.pareto_bids + candidate_bids
-
         # Filter out non-Pareto-efficient bids
-        for bid, our_utility, opponent_utility in all_candidates:
+        for bid, our_utility, opponent_utility in candidate_bids:
             # A bid is Pareto-efficient if there is no other bid that dominates it in both utilities
             if not any(
                 (other_our_utility >= our_utility and other_opponent_utility > opponent_utility) or
                 (other_our_utility > our_utility and other_opponent_utility >= opponent_utility)
-                for _, other_our_utility, other_opponent_utility in all_candidates
+                for _, other_our_utility, other_opponent_utility in candidate_bids
             ):
                 # If the bid is Pareto-efficient, add it to the new Pareto frontier
-                new_pareto_bids.append((bid, our_utility, opponent_utility))
-
-        # Update the agent's Pareto frontier with the new set of Pareto-efficient bids
-        self.pareto_bids = new_pareto_bids
+                pareto_bids.append((bid, our_utility, opponent_utility))
 
         # If there are Pareto-efficient bids, select the one with the highest score
-        if self.pareto_bids:
-            return max(self.pareto_bids, key=lambda x: self.score_bid(x[0]))[0]
+        if pareto_bids:
+            return max(pareto_bids, key=lambda x: self.score_bid(x[0]))[0]
 
         # If no Pareto-efficient bids are found, return the first candidate bid
         return candidate_bids[0][0]
@@ -307,5 +304,4 @@ class Agent68(DefaultParty):
             opponent_utility = self.opponent_model.get_predicted_utility(bid)
             opponent_score = (1.0 - alpha * time_pressure) * opponent_utility
             score += opponent_score
-
         return score
