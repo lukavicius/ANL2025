@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import random
 import time
 
 from utils.runners import run_tournament
