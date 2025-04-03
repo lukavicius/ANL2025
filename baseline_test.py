@@ -26,46 +26,46 @@ tournament_settings = {
         "class": "agents_test.agent007.agent007.Agent007",
         "parameters": {"storage_dir": "agents_test/storage_dir/Agent007"},
     },
-    # {
-    #     "name" : "Agent55",
-    #     "class": "agents_test.agent55.agent55.Agent55",
-    #     "parameters": {"storage_dir": "agents_test/storage_dir/Agent55"},
-    # },
-    # {
-    #     "name" : "BoulwareAgent",
-    #     "class": "agents_test.boulware_agent.boulware_agent.BoulwareAgent",
-    #     "parameters": {"storage_dir": "agents_test/storage_dir/BoulwareAgent"},
-    # },
-    # {
-    #     "name" : "ConcederAgent",
-    #     "class": "agents_test.conceder_agent.conceder_agent.ConcederAgent",
-    #     "parameters": {"storage_dir": "agents_test/storage_dir/ConcederAgent"},
-    # },
+    {
+        "name" : "Agent55",
+        "class": "agents_test.agent55.agent55.Agent55",
+        "parameters": {"storage_dir": "agents_test/storage_dir/Agent55"},
+    },
+    {
+        "name" : "BoulwareAgent",
+        "class": "agents_test.boulware_agent.boulware_agent.BoulwareAgent",
+        "parameters": {"storage_dir": "agents_test/storage_dir/BoulwareAgent"},
+    },
+    {
+        "name" : "ConcederAgent",
+        "class": "agents_test.conceder_agent.conceder_agent.ConcederAgent",
+        "parameters": {"storage_dir": "agents_test/storage_dir/ConcederAgent"},
+    },
     {
         "name" : "DreamTeam109Agent",
         "class": "agents_test.dreamteam109_agent.dreamteam109_agent.DreamTeam109Agent",
         "parameters": {"storage_dir": "agents_test/storage_dir/DreamTeam109Agent"},
     },
-    # {
-    #     "name" : "LinearAgent",
-    #     "class": "agents_test.linear_agent.linear_agent.LinearAgent",
-    #     "parameters": {"storage_dir": "agents_test/storage_dir/LinearAgent"},
-    # },
-    # {
-    #     "name" : "RandomAgent",
-    #     "class": "agents_test.random_agent.random_agent.RandomAgent",
-    #     "parameters": {"storage_dir": "agents_test/storage_dir/RandomAgent"},
-    # },
-    # {
-    #     "name" : "StupidAgent",
-    #     "class": "agents_test.stupid_agent.stupid_agent.StupidAgent",
-    #     "parameters": {"storage_dir": "agents_test/storage_dir/StupidAgent"},
-    # },
-    # {
-    #     "name" : "ChargingBoul",
-    #     "class": "agents_test.charging_boul.charging_boul.ChargingBoul",
-    #     "parameters": {"storage_dir": "agents_test/storage_dir/ChargingBoul"},
-    # }
+    {
+        "name" : "LinearAgent",
+        "class": "agents_test.linear_agent.linear_agent.LinearAgent",
+        "parameters": {"storage_dir": "agents_test/storage_dir/LinearAgent"},
+    },
+    {
+        "name" : "RandomAgent",
+        "class": "agents_test.random_agent.random_agent.RandomAgent",
+        "parameters": {"storage_dir": "agents_test/storage_dir/RandomAgent"},
+    },
+    {
+        "name" : "StupidAgent",
+        "class": "agents_test.stupid_agent.stupid_agent.StupidAgent",
+        "parameters": {"storage_dir": "agents_test/storage_dir/StupidAgent"},
+    },
+    {
+        "name" : "ChargingBoul",
+        "class": "agents_test.charging_boul.charging_boul.ChargingBoul",
+        "parameters": {"storage_dir": "agents_test/storage_dir/ChargingBoul"},
+    }
     ],
     "profile_sets": [
         ["domains/domain" + random_selection[0] + "/profileA.json", "domains/domain" + random_selection[0] + "/profileB.json"],
