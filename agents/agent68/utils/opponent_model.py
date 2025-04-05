@@ -81,7 +81,8 @@ class IssueEstimator:
             self.weight = 0
 
     def get_value_utility(self, value: Value):
-        return self.value_trackers[value].utility if value in self.value_trackers else 0
+        if value in self.value_trackers: return self.value_trackers[value].utility 
+        else: return 0
 
 
 class ValueEstimator:
