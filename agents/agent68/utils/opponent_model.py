@@ -36,8 +36,7 @@ class OpponentModel:
 
         # calculate the total weight of all issues
         total_weight = sum(est.weight for est in self.issue_estimators.values())
-        if total_weight == 0:
-            total_weight = len(self.issue_estimators)
+        if total_weight == 0: total_weight = len(self.issue_estimators)
 
         predicted_utility = 0
 
@@ -71,8 +70,8 @@ class IssueEstimator:
         total_weighted = sum(vt.weighted_count for vt in self.value_trackers.values())
 
         # recalculate the utilities of all values with the new total weight
-        for vt in self.value_trackers.values():
-            vt.recalculate_utility(total_weighted)
+        for value_tracker in self.value_trackers.values():
+            value_tracker.recalculate_utility(total_weighted)
 
         # this issue is more important if one value persists (the opponent does not concede easily)
         if total_weighted > 0:
