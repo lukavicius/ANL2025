@@ -206,8 +206,8 @@ class Agent68(DefaultParty):
         utilities.sort(reverse=True)
 
         top_5 = int(all_bids_size*0.02)
-        top_10_percent = utilities[:top_5] 
-        self.good_utility_threshold = top_10_percent[-1]
+        top_x_percent = utilities[:top_5] 
+        self.good_utility_threshold = top_x_percent[-1]
 
 
     def accept_condition(self, bid: Bid) -> bool:
