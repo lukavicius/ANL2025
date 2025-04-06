@@ -25,20 +25,20 @@ class OpponentModel:
         decay_lambda = 0.2
         time_weight = math.exp(-decay_lambda * (len(self.offers) - 1))
 
+        # go over all the issue estimators and update them with the value from the new bid
         for issue_id, issue_estimator in self.issue_estimators.items():
-            value = bid.getValue(issue_id)
-            issue_estimator.update(value, time_weight)
+            issue_estimator.update(bid.getValue(issue_id), time_weight)
 
     def get_predicted_utility(self, bid: Bid):
+        # if there are no bids yet, the utility is 0
         if len(self.offers) == 0 or bid is None:
-            return 0.0
+            return 0
 
         # calculate the total weight of all issues
         total_weight = sum(est.weight for est in self.issue_estimators.values())
-        if total_weight == 0:
-            total_weight = len(self.issue_estimators)
+        if total_weight == 0: total_weight = len(self.issue_estimators)
 
-        predicted_utility = 0.0
+        predicted_utility = 0
 
         # go over each issue to calculate the overall weighted utility
         for issue_id, issue_estimator in self.issue_estimators.items():
@@ -70,8 +70,8 @@ class IssueEstimator:
         total_weighted = sum(vt.weighted_count for vt in self.value_trackers.values())
 
         # recalculate the utilities of all values with the new total weight
-        for vt in self.value_trackers.values():
-            vt.recalculate_utility(total_weighted)
+        for value_tracker in self.value_trackers.values():
+            value_tracker.recalculate_utility(total_weighted)
 
         # this issue is more important if one value persists (the opponent does not concede easily)
         if total_weighted > 0:
